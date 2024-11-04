@@ -1,6 +1,7 @@
 import os
 import argparse
 from pathlib import Path
+import OpenEXR
 
 
 def gather_deps_from_nk_file(nuke_script):
@@ -56,12 +57,12 @@ def gather_deps_from_nk_file(nuke_script):
             # assumes any node in allowed read nodes is a node we can get a "file" from
             node_collector["type"] = line_s.replace(" ", "").strip(
                 "{"
-            )  # assumes its before the {
+            )  # assumes it's before the {
             node_found = True
 
     dep_results_list = (
         []
-    )  # glob paths to files or file collections that have an asociated error or pass message
+    )  # glob paths to files or file collections that have an associated error or pass message
 
     for node in nodes:
         if ".gizmo" in node["type"] or check_node_disabled(node):
@@ -113,26 +114,39 @@ def check_node_disabled(node):
     return disabled
 
 
+def process_files(nuke_file):
+
+    if not nuke_file.exists():
+        print("The target directory doesn't exist")
+        return
+
+    file_paths = gather_deps_from_nk_file(str(nuke_file))
+    file_paths.sort(key=str.lower)
+
+    return file_paths
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument("Read")
-    parser.add_argument("-l", "--long", action="store_false")
+    parser.add_argument("-l", "--long", action="store_true")
+    parser.add_argument("-m", "--metadata", action="store_true")
     args = parser.parse_args()
 
-    target_dir = Path(args.Read)
+    # Get the Nuke script path input.
+    nuke_file = Path(args.Read)
 
-    if not target_dir.exists():
-        print("The target directory doesn't exist")
-    else:
-        file_names = [
-            os.path.basename(dep) if args.long else dep
-            for dep in gather_deps_from_nk_file(str(args.Read))
-        ]
-        file_names.sort(key=str.lower)
+    # Get the list of full file path dependencies from the Nuke script.
+    file_names = process_files(nuke_file)
 
-        for file_name in file_names:
-            print(file_name)
+    for file in file_names:
+        print(os.path.basename(file) if not args.long else file)
 
-        print(len(file_names))
+        # Begin metadata check.
+        with OpenEXR.File(file) as infile:
+            header = infile.header()
+            print(header)
+
+    print(f"Total dependencies: " + str(len(file_names)))
