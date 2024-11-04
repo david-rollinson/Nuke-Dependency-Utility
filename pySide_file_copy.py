@@ -1,24 +1,23 @@
 import os
 import argparse
-from copyreg import Copy
+from pathlib import Path
 
 
-def gather_deps_from_nk_file():
+def gather_deps_from_nk_file(nuke_script):
     """
     Get all dependencies inside a nuke file based on allowed list of nodes.
 
     Args:
-        nuke_filepath str: Path to nuke script.
+        nuke_script str: Path to nuke script.
 
     Returns:
         list: List of all paths in nuke file.
     """
-    nuke_filepath = r"/Users/davidrollinson/Documents/Development/Python/pySide_file_copy/nuke_example_file.nk"
 
-    if "\\" in nuke_filepath:
-        nuke_filepath = nuke_filepath.replace("\\", "/")
+    if "\\" in nuke_script:
+        nuke_script = nuke_script.replace("\\", "/")
 
-    nuke_file = open(nuke_filepath, "r", encoding="utf-8", errors="ignore")
+    nuke_file = open(nuke_script, "r", encoding="utf-8", errors="ignore")
     # file_path_open = "file "
     allowed_read_nodes = [
         "Read{",
@@ -55,7 +54,7 @@ def gather_deps_from_nk_file():
 
         if line_s_w in allowed_read_nodes or line_s_w.endswith(".gizmo{"):
             # assumes any node in allowed read nodes is a node we can get a "file" from
-            node_collector["jf_type"] = line_s.replace(" ", "").strip(
+            node_collector["type"] = line_s.replace(" ", "").strip(
                 "{"
             )  # assumes its before the {
             node_found = True
@@ -65,7 +64,7 @@ def gather_deps_from_nk_file():
     )  # glob paths to files or file collections that have an asociated error or pass message
 
     for node in nodes:
-        if ".gizmo" in node["jf_type"] or check_node_disabled(node):
+        if ".gizmo" in node["type"] or check_node_disabled(node):
             pass
         else:
             result = check_nuke_node_contents(node)
@@ -114,10 +113,26 @@ def check_node_disabled(node):
     return disabled
 
 
-file_names = [os.path.basename(dep) for dep in gather_deps_from_nk_file()]
-file_names.sort(key=str.lower)
+if __name__ == "__main__":
 
-for file_name in file_names:
-    print(file_name)
+    parser = argparse.ArgumentParser()
 
-print(len(file_names))
+    parser.add_argument("Read")
+    parser.add_argument("-l", "--long", action="store_false")
+    args = parser.parse_args()
+
+    target_dir = Path(args.Read)
+
+    if not target_dir.exists():
+        print("The target directory doesn't exist")
+    else:
+        file_names = [
+            os.path.basename(dep) if args.long else dep
+            for dep in gather_deps_from_nk_file(str(args.Read))
+        ]
+        file_names.sort(key=str.lower)
+
+        for file_name in file_names:
+            print(file_name)
+
+        print(len(file_names))
