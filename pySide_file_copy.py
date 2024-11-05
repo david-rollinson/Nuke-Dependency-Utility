@@ -1,7 +1,9 @@
+import sys
 import os
 import argparse
 from pathlib import Path
 import OpenEXR
+from PySide6.QtWidgets import QDialog, QTreeWidget, QVBoxLayout, QApplication
 
 
 def gather_deps_from_nk_file(nuke_script):
@@ -94,7 +96,7 @@ def check_nuke_node_contents(node):
         if file_path:
             break
     if not file_path:
-        # logging.info("no file path in {} node : {}".format(node["jf_type"], node.get("name", "unnamed")))
+        # print(r"no file path in {} node : {}".format(node["type"], node.get("name", "unnamed")))
         return
 
     file_path = file_path.replace('"', "")
@@ -125,28 +127,55 @@ def process_files(nuke_file):
 
     return file_paths
 
+class FindNestedAssets(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+
+        self.tree_widget = QTreeWidget()
+        self.tree_widget.setHeaderLabels(["Node Path", "Filepath"])
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.tree_widget,3)
+
+        self.setLayout(layout)
+
+        # screen_width = screen_geometry.width()
+        # screen_height = screen_geometry.height()
+        #
+        # dialog_width = screen_width / 1.25
+        # dialog_height = screen_height / 1.25
+        #
+        # pos_x = (screen_width - dialog_width) / 2
+        # pos_y = (screen_height - dialog_height) / 2
+        #
+        # self.setGeometry(pos_x, pos_y, dialog_width, dialog_height)
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("Read")
-    parser.add_argument("-l", "--long", action="store_true")
-    parser.add_argument("-m", "--metadata", action="store_true")
-    args = parser.parse_args()
+    # parser.add_argument("Read")
+    # parser.add_argument("-l", "--long", action="store_true")
+    # parser.add_argument("-m", "--metadata", action="store_true")
+    # args = parser.parse_args()
 
     # Get the Nuke script path input.
-    nuke_file = Path(args.Read)
+    # nuke_file = Path(args.Read)
 
     # Get the list of full file path dependencies from the Nuke script.
-    file_names = process_files(nuke_file)
+    # file_names = process_files(nuke_file)
 
-    for file in file_names:
-        print(os.path.basename(file) if not args.long else file)
+    # for file in file_names:
+    #     print(os.path.basename(file) if not args.long else file)
+    #
+    #     # Begin metadata check.
+    #     with OpenEXR.File(file) as infile:
+    #         header = infile.header()
+    #         print(header)
 
-        # Begin metadata check.
-        with OpenEXR.File(file) as infile:
-            header = infile.header()
-            print(header)
+    app = QApplication(sys.argv)
+    dia = FindNestedAssets()
+    dia.show()
 
-    print(f"Total dependencies: " + str(len(file_names)))
+    # print(f"Total dependencies: " + str(len(file_names)))
