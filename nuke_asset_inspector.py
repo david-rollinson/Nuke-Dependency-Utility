@@ -3,8 +3,8 @@ import os
 import argparse
 from pathlib import Path
 import OpenEXR
-from PySide6.QtWidgets import QDialog, QTreeWidget, QVBoxLayout, QApplication
-from PySide6.QtGui import QScreen
+from PySide6.QtWidgets import QDialog, QTreeWidget, QVBoxLayout, QApplication, QLineEdit, QPushButton, QWidget, \
+    QMainWindow
 
 
 def gather_deps_from_nk_file(nuke_script):
@@ -128,31 +128,36 @@ def process_files(nuke_file):
 
     return file_paths
 
-class FindNestedAssets(QDialog):
-    def __init__(self, parent=None):
-        QDialog.__init__(self, parent)
+class FindNestedAssets(QWidget):
+    def __init__(self):
+        super().__init__()
 
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Node Path", "Filepath"])
 
+        self.input_filepath = QLineEdit("Path to Nuke File...")
+
+        self.set_input = QPushButton("Set Input")
+
         layout = QVBoxLayout()
+        layout.addWidget(self.input_filepath)
+        layout.addWidget(self.set_input)
         layout.addWidget(self.tree_widget,3)
 
         self.setLayout(layout)
 
-        screen = QApplication.primaryScreen()
-        screen_geometry = screen.availableGeometry()
-        screen_width = screen_geometry.width()
-        screen_height = screen_geometry.height()
+        self.set_input.clicked.connect(lambda: self.execute_nuke_search(Path(self.input_filepath.text())))
 
-        dialog_width = screen_width / 2
-        dialog_height = screen_height / 2
+    def execute_nuke_search(self, input_path):
+        file_names = process_files(input_path)
+        print(f"These are the file names: " + str(file_names))
 
-        pos_x = (screen_width - dialog_width) / 2
-        pos_y = (screen_height - dialog_height) / 2
+class MainWindow(QMainWindow):
+    def __init__(self, widget):
+        super().__init__()
+        self.setWindowTitle("Nuke Asset Inspector")
 
-        self.setGeometry(pos_x, pos_y, dialog_width, dialog_height)
-
+        self.setCentralWidget(widget)
 
 if __name__ == "__main__":
 
@@ -178,8 +183,11 @@ if __name__ == "__main__":
             print(header)
 
     app = QApplication(sys.argv)
-    dia = FindNestedAssets()
-    dia.show()
+    widget = FindNestedAssets()
+
+    window = MainWindow(widget)
+    window.resize(800, 600)
+    window.show()
 
     print(f"Total dependencies: " + str(len(file_names)))
 
