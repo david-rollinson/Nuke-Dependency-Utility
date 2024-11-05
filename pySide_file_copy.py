@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import OpenEXR
 from PySide6.QtWidgets import QDialog, QTreeWidget, QVBoxLayout, QApplication
+from PySide6.QtGui import QScreen
 
 
 def gather_deps_from_nk_file(nuke_script):
@@ -139,43 +140,47 @@ class FindNestedAssets(QDialog):
 
         self.setLayout(layout)
 
-        # screen_width = screen_geometry.width()
-        # screen_height = screen_geometry.height()
-        #
-        # dialog_width = screen_width / 1.25
-        # dialog_height = screen_height / 1.25
-        #
-        # pos_x = (screen_width - dialog_width) / 2
-        # pos_y = (screen_height - dialog_height) / 2
-        #
-        # self.setGeometry(pos_x, pos_y, dialog_width, dialog_height)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        dialog_width = screen_width / 2
+        dialog_height = screen_height / 2
+
+        pos_x = (screen_width - dialog_width) / 2
+        pos_y = (screen_height - dialog_height) / 2
+
+        self.setGeometry(pos_x, pos_y, dialog_width, dialog_height)
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    # parser.add_argument("Read")
-    # parser.add_argument("-l", "--long", action="store_true")
-    # parser.add_argument("-m", "--metadata", action="store_true")
-    # args = parser.parse_args()
+    parser.add_argument("Read")
+    parser.add_argument("-l", "--long", action="store_true")
+    parser.add_argument("-m", "--metadata", action="store_true")
+    args = parser.parse_args()
 
     # Get the Nuke script path input.
-    # nuke_file = Path(args.Read)
+    nuke_file = Path(args.Read)
 
     # Get the list of full file path dependencies from the Nuke script.
-    # file_names = process_files(nuke_file)
+    file_names = process_files(nuke_file)
 
-    # for file in file_names:
-    #     print(os.path.basename(file) if not args.long else file)
+    for file in file_names:
+        print(os.path.basename(file) if not args.long else file)
     #
     #     # Begin metadata check.
-    #     with OpenEXR.File(file) as infile:
-    #         header = infile.header()
-    #         print(header)
+        with OpenEXR.File(file) as infile:
+            header = infile.header()
+            print(header)
 
     app = QApplication(sys.argv)
     dia = FindNestedAssets()
     dia.show()
 
-    # print(f"Total dependencies: " + str(len(file_names)))
+    print(f"Total dependencies: " + str(len(file_names)))
+
+    sys.exit(app.exec())
