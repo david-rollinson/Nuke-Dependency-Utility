@@ -3,8 +3,16 @@ import os
 import argparse
 from pathlib import Path
 import OpenEXR
-from PySide6.QtWidgets import QDialog, QTreeWidget, QVBoxLayout, QApplication, QLineEdit, QPushButton, QWidget, \
-    QMainWindow
+from PySide6.QtWidgets import (
+    QDialog,
+    QTreeWidget,
+    QVBoxLayout,
+    QApplication,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+    QMainWindow,
+)
 
 
 def gather_deps_from_nk_file(nuke_script):
@@ -128,6 +136,7 @@ def process_files(nuke_file):
 
     return file_paths
 
+
 class FindNestedAssets(QWidget):
     def __init__(self):
         super().__init__()
@@ -142,15 +151,18 @@ class FindNestedAssets(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self.input_filepath)
         layout.addWidget(self.set_input)
-        layout.addWidget(self.tree_widget,3)
+        layout.addWidget(self.tree_widget, 3)
 
         self.setLayout(layout)
 
-        self.set_input.clicked.connect(lambda: self.execute_nuke_search(Path(self.input_filepath.text())))
+        self.set_input.clicked.connect(
+            lambda: self.execute_nuke_search(Path(self.input_filepath.text()))
+        )
 
     def execute_nuke_search(self, input_path):
         file_names = process_files(input_path)
         print(f"These are the file names: " + str(file_names))
+
 
 class MainWindow(QMainWindow):
     def __init__(self, widget):
@@ -158,6 +170,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Nuke Asset Inspector")
 
         self.setCentralWidget(widget)
+
 
 if __name__ == "__main__":
 
@@ -176,8 +189,8 @@ if __name__ == "__main__":
 
     for file in file_names:
         print(os.path.basename(file) if not args.long else file)
-    #
-    #     # Begin metadata check.
+        #
+        #     # Begin metadata check.
         with OpenEXR.File(file) as infile:
             header = infile.header()
             print(header)
