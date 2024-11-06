@@ -12,6 +12,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QWidget,
     QMainWindow,
+    QFileDialog,
+    QHBoxLayout,
+    QSizePolicy
 )
 
 
@@ -133,6 +136,7 @@ def process_files(nuke_file):
 
     file_paths = gather_deps_from_nk_file(str(nuke_file))
     file_paths.sort(key=str.lower)
+    print(file_paths)
 
     return file_paths
 
@@ -144,24 +148,65 @@ class FindNestedAssets(QWidget):
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Node Path", "Filepath"])
 
-        self.input_filepath = QLineEdit("Path to Nuke File...")
+        self.input_filepath = QLineEdit()
+        self.input_filepath.setPlaceholderText("Path to Nuke file...")
+
+        self.open_explorer_input = QPushButton("...")
+        self.open_explorer_input.clicked.connect(lambda: self.open_explorer_dialog(True, self.input_filepath))
 
         self.set_input = QPushButton("Set Input")
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.input_filepath)
-        layout.addWidget(self.set_input)
-        layout.addWidget(self.tree_widget, 3)
-
-        self.setLayout(layout)
-
         self.set_input.clicked.connect(
-            lambda: self.execute_nuke_search(Path(self.input_filepath.text()))
+            lambda: self.execute_nuke_search(self.input_filepath.text())
         )
 
+        self.output_filepath = QLineEdit()
+        self.output_filepath.setPlaceholderText("Folder to copy to...")
+
+        self.open_explorer_output = QPushButton("...")
+        self.open_explorer_output.clicked.connect(lambda: self.open_explorer_dialog(False, self.output_filepath))
+
+        self.open_explorer = QPushButton("Copy to Output Directory")
+        # self.open_explorer.clicked.connect(lambda: self.open_explorer_dialog())
+
+        file_input_h_layout = QHBoxLayout()
+        file_input_h_layout.addWidget(self.input_filepath)
+        file_input_h_layout.addWidget(self.open_explorer_input)
+
+        file_output_h_layout = QHBoxLayout()
+        file_output_h_layout.addWidget(self.output_filepath)
+        file_output_h_layout.addWidget(self.open_explorer_output)
+
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(file_input_h_layout)
+        main_layout.addWidget(self.set_input)
+        main_layout.addWidget(self.tree_widget, 3)
+        main_layout.addLayout(file_output_h_layout)
+
+        self.setLayout(main_layout)
+
     def execute_nuke_search(self, input_path):
-        file_names = process_files(input_path)
-        print(f"These are the file names: " + str(file_names))
+        input_path = input_path.strip()
+        if Path(input_path).is_file():
+            file_names = process_files(Path(input_path))
+            print(f"These are the file names: " + str(file_names))
+        else:
+            print("No file found.")
+
+    def open_explorer_dialog(self, is_file: bool, line_edit: QLineEdit) -> None:
+        path = (
+            QFileDialog.getOpenFileName(
+                self,
+                "Open Explorer",
+                str(Path(line_edit.text())),
+                "Nuke Files (*.nk);;Text Files (*.txt);;All Files (*)",
+            )[0]
+            if is_file
+            else QFileDialog.getExistingDirectory(self, "Select Copy Location")
+        )
+
+        if path:
+            line_edit.setText(path)
+
 
 
 class MainWindow(QMainWindow):
