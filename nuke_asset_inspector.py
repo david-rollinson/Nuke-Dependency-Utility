@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog,
     QHBoxLayout,
-    QSizePolicy
+    QLabel
 )
 
 
@@ -145,14 +145,13 @@ class FindNestedAssets(QWidget):
     def __init__(self):
         super().__init__()
 
+        main_layout = QVBoxLayout()
+
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Node Path", "Filepath"])
 
-        self.input_filepath = QLineEdit()
-        self.input_filepath.setPlaceholderText("Path to Nuke file...")
-
-        self.open_explorer_input = QPushButton("...")
-        self.open_explorer_input.clicked.connect(lambda: self.open_explorer_dialog(True, self.input_filepath))
+        # Create Input widget.
+        self.create_io_widget_layout(main_layout, "Nuke Script Input: ", True)
 
         self.set_input = QPushButton("Set Input")
         self.set_input.clicked.connect(
@@ -163,21 +162,23 @@ class FindNestedAssets(QWidget):
         self.output_filepath.setPlaceholderText("Folder to copy to...")
 
         self.open_explorer_output = QPushButton("...")
-        self.open_explorer_output.clicked.connect(lambda: self.open_explorer_dialog(False, self.output_filepath))
+        self.open_explorer_output.clicked.connect(
+            lambda: self.open_explorer_dialog(False, self.output_filepath)
+        )
 
         self.open_explorer = QPushButton("Copy to Output Directory")
         # self.open_explorer.clicked.connect(lambda: self.open_explorer_dialog())
 
-        file_input_h_layout = QHBoxLayout()
-        file_input_h_layout.addWidget(self.input_filepath)
-        file_input_h_layout.addWidget(self.open_explorer_input)
+        # file_input_h_layout = QHBoxLayout()
+        # file_input_h_layout.addWidget(self.input_filepath)
+        # file_input_h_layout.addWidget(self.open_explorer_input)
 
         file_output_h_layout = QHBoxLayout()
         file_output_h_layout.addWidget(self.output_filepath)
         file_output_h_layout.addWidget(self.open_explorer_output)
 
-        main_layout = QVBoxLayout()
-        main_layout.addLayout(file_input_h_layout)
+
+        # main_layout.addLayout(file_input_h_layout)
         main_layout.addWidget(self.set_input)
         main_layout.addWidget(self.tree_widget, 3)
         main_layout.addLayout(file_output_h_layout)
@@ -207,6 +208,23 @@ class FindNestedAssets(QWidget):
         if path:
             line_edit.setText(path)
 
+    def create_io_widget_layout(self, layout, label_text, input):
+        hbox = QHBoxLayout()
+
+        label = QLabel(label_text)
+
+        io_path_editor = QLineEdit()
+        open_explorer = QPushButton("...")
+
+        hbox.addWidget(label)
+        hbox.addWidget(io_path_editor)
+        hbox.addWidget(open_explorer)
+
+        open_explorer.clicked.connect(
+            lambda: self.open_explorer_dialog(input, io_path_editor)
+        )
+
+        layout.addLayout(hbox)
 
 
 class MainWindow(QMainWindow):
