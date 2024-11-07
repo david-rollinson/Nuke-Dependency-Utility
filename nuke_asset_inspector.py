@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSpacerItem,
-    QSizePolicy
+    QSizePolicy, QTreeWidgetItem,
 )
 
 
@@ -162,16 +162,18 @@ class FindNestedAssets(QWidget):
         file_input_h_layout.addWidget(self.input_filepath)
         file_input_h_layout.addWidget(self.open_explorer_input)
 
-
         self.set_input = QPushButton("Set Input")
         self.set_input.clicked.connect(
             lambda: self.execute_nuke_search(self.input_filepath.text())
         )
 
-        horizontal_spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        horizontal_spacer = QSpacerItem(
+            40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum
+        )
+        # Tree Widget.
         self.tree_label = QLabel("Located Dependencies:")
         self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderLabels(["Node Path", "Filepath"])
+        self.tree_widget.setHeaderLabels(["Filepath"])
 
         # Nuke script output setup.
         self.output_label = QLabel("Folder to Copy to: ")
@@ -193,7 +195,7 @@ class FindNestedAssets(QWidget):
         main_layout.addWidget(self.set_input)
         main_layout.addItem(horizontal_spacer)
         main_layout.addWidget(self.tree_label)
-        main_layout.addWidget(self.tree_widget, 3)
+        main_layout.addWidget(self.tree_widget)
         main_layout.addItem(horizontal_spacer)
         main_layout.addLayout(file_output_h_layout)
         main_layout.addWidget(self.open_explorer)
@@ -204,7 +206,8 @@ class FindNestedAssets(QWidget):
         input_path = input_path.strip()
         if Path(input_path).is_file():
             file_names = process_files(Path(input_path))
-            print(f"These are the file names: " + str(file_names))
+            for file_name in file_names:
+                self.tree_widget.addTopLevelItem(QTreeWidgetItem([file_name]))
         else:
             print("No file found.")
 
@@ -247,13 +250,13 @@ if __name__ == "__main__":
     # Get the list of full file path dependencies from the Nuke script.
     file_names = process_files(nuke_file)
 
-    for file in file_names:
-        print(os.path.basename(file) if not args.long else file)
-        #
-        #     # Begin metadata check.
-        with OpenEXR.File(file) as infile:
-            header = infile.header()
-            print(header)
+    # for file in file_names:
+    #     print(os.path.basename(file) if not args.long else file)
+    #     #
+    #     #     # Begin metadata check.
+    #     with OpenEXR.File(file) as infile:
+    #         header = infile.header()
+    #         print(header)
 
     app = QApplication(sys.argv)
     widget = FindNestedAssets()
@@ -262,6 +265,6 @@ if __name__ == "__main__":
     window.resize(800, 600)
     window.show()
 
-    print(f"Total dependencies: " + str(len(file_names)))
+    # print(f"Total dependencies: " + str(len(file_names)))
 
     sys.exit(app.exec())
