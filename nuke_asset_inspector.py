@@ -174,6 +174,10 @@ class FindNestedAssets(QWidget):
         self.tree_label = QLabel("Located Dependencies:")
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Filepath"])
+        self.metadata_button = QPushButton("Gather EXR Metadata")
+        self.metadata_button.clicked.connect(
+            lambda: self.extract_metadata(self.tree_widget)
+        )
 
         # Nuke script output setup.
         self.output_label = QLabel("Folder to Copy to: ")
@@ -196,6 +200,7 @@ class FindNestedAssets(QWidget):
         main_layout.addItem(horizontal_spacer)
         main_layout.addWidget(self.tree_label)
         main_layout.addWidget(self.tree_widget)
+        main_layout.addWidget(self.metadata_button)
         main_layout.addItem(horizontal_spacer)
         main_layout.addLayout(file_output_h_layout)
         main_layout.addWidget(self.open_explorer)
@@ -226,6 +231,15 @@ class FindNestedAssets(QWidget):
         if path:
             line_edit.setText(path)
 
+    def extract_metadata(self, tree_widget):
+        for i in range(tree_widget.topLevelItemCount()):
+            top_item = tree_widget.topLevelItem(i)
+            with OpenEXR.File(top_item.text(0)) as infile:
+                header = infile.header()
+                metadata_child = QTreeWidgetItem()
+                metadata_child.setText(0, str(header))
+                top_item.addChild(metadata_child)
+
 
 class MainWindow(QMainWindow):
     def __init__(self, widget):
@@ -249,14 +263,6 @@ if __name__ == "__main__":
 
     # Get the list of full file path dependencies from the Nuke script.
     file_names = process_files(nuke_file)
-
-    # for file in file_names:
-    #     print(os.path.basename(file) if not args.long else file)
-    #     #
-    #     #     # Begin metadata check.
-    #     with OpenEXR.File(file) as infile:
-    #         header = infile.header()
-    #         print(header)
 
     app = QApplication(sys.argv)
     widget = FindNestedAssets()
