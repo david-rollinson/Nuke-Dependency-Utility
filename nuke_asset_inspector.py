@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 import OpenEXR
 from PySide6.QtWidgets import (
-    QDialog,
     QTreeWidget,
     QVBoxLayout,
     QApplication,
@@ -16,11 +15,12 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSpacerItem,
-    QSizePolicy, QTreeWidgetItem,
+    QSizePolicy,
+    QTreeWidgetItem,
 )
 
 
-def gather_deps_from_nk_file(nuke_script):
+def gather_deps_from_nk_file(nuke_script: str) -> list[str]:
     """
     Get all dependencies inside a nuke file based on allowed list of nodes.
 
@@ -31,8 +31,7 @@ def gather_deps_from_nk_file(nuke_script):
         list: List of all paths in nuke file.
     """
 
-    if "\\" in nuke_script:
-        nuke_script = nuke_script.replace("\\", "/")
+    nuke_script = nuke_script.replace("\\", "/")
 
     nuke_file = open(nuke_script, "r", encoding="utf-8", errors="ignore")
     # file_path_open = "file "
@@ -81,6 +80,7 @@ def gather_deps_from_nk_file(nuke_script):
     )  # glob paths to files or file collections that have an associated error or pass message
 
     for node in nodes:
+        print(node)
         if ".gizmo" in node["type"] or check_node_disabled(node):
             pass
         else:
@@ -91,7 +91,7 @@ def gather_deps_from_nk_file(nuke_script):
     return dep_results_list
 
 
-def check_nuke_node_contents(node):
+def check_nuke_node_contents(node: dict[str, str]) -> str:
     """
     Checks a dict based on a nuke node for files and then checks files exist in a desired root.
     Args:
@@ -119,7 +119,15 @@ def check_nuke_node_contents(node):
     return file_path
 
 
-def check_node_disabled(node):
+def check_node_disabled(node: dict[str, str]) -> bool:
+    """
+    Checks current node for disabled key status, returning true if 'disabled' is found.
+    Args:
+        node: Dict of nuke key value pairs.
+
+    Returns:
+        bool: Disabled key status at current node. Only returns true - Nuke doesn't store a 'disabled: false' pair.
+    """
     disabled_keys = [
         "disable",
     ]
@@ -130,8 +138,15 @@ def check_node_disabled(node):
     return disabled
 
 
-def process_files(nuke_file):
+def process_files(nuke_file: Path) -> list[str]:
+    """
+    Checks if an input file path exists, then runs the dependency gather process if true.
+    Args:
+        Path: object containing the nuke script file path.
 
+    Returns:
+        list[str]: Containing valid script paths.
+    """
     if not nuke_file.exists():
         print("The target directory doesn't exist")
         return
@@ -249,8 +264,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
 
 
-if __name__ == "__main__":
+def find_nested_assets_CLI():
+    """
+    Runs the Nuke Dependency Check in CLI format.
 
+    Using this function requires the script to be run in a Terminal, taking the positional Read argument and the optional -l and -m arguments. `-l` returns the absolute path, `-m` returns any .exr metadata found in scripts.
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument("Read")
@@ -263,6 +282,12 @@ if __name__ == "__main__":
 
     # Get the list of full file path dependencies from the Nuke script.
     file_names = process_files(nuke_file)
+    print(f"Total dependencies: " + str(len(file_names)))
+
+
+if __name__ == "__main__":
+
+    # find_nested_assets_CLI()
 
     app = QApplication(sys.argv)
     widget = FindNestedAssets()
@@ -270,7 +295,5 @@ if __name__ == "__main__":
     window = MainWindow(widget)
     window.resize(800, 600)
     window.show()
-
-    # print(f"Total dependencies: " + str(len(file_names)))
 
     sys.exit(app.exec())
