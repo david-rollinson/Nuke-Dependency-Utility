@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTreeWidgetItem,
 )
+from PySide6.QtCore import Qt
 
 
 def gather_deps_from_nk_file(nuke_script: str) -> list[str]:
@@ -158,6 +159,27 @@ def process_files(nuke_file: Path) -> list[str]:
     return file_paths
 
 
+def find_nested_assets_CLI():
+    """
+    Runs the Nuke Dependency Check in CLI format.
+
+    Using this function requires the script to be run in a Terminal, taking the positional Read argument and the optional -l and -m arguments. `-l` returns the absolute path, `-m` returns any .exr metadata found in scripts.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("Read")
+    parser.add_argument("-l", "--long", action="store_true")
+    parser.add_argument("-m", "--metadata", action="store_true")
+    args = parser.parse_args()
+
+    # Get the Nuke script path input.
+    nuke_file = Path(args.Read)
+
+    # Get the list of full file path dependencies from the Nuke script.
+    file_names = process_files(nuke_file)
+    print(f"Total dependencies: " + str(len(file_names)))
+
+
 class FindNestedAssets(QWidget):
     def __init__(self):
         super().__init__()
@@ -177,7 +199,7 @@ class FindNestedAssets(QWidget):
         file_input_h_layout.addWidget(self.input_filepath)
         file_input_h_layout.addWidget(self.open_explorer_input)
 
-        self.set_input = QPushButton("Set Input")
+        self.set_input = QPushButton("Search for Dependencies")
         self.set_input.clicked.connect(
             lambda: self.execute_nuke_search(self.input_filepath.text())
         )
@@ -185,6 +207,7 @@ class FindNestedAssets(QWidget):
         horizontal_spacer = QSpacerItem(
             40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum
         )
+
         # Tree Widget.
         self.tree_label = QLabel("Located Dependencies:")
         self.tree_widget = QTreeWidget()
@@ -193,6 +216,19 @@ class FindNestedAssets(QWidget):
         self.metadata_button.clicked.connect(
             lambda: self.extract_metadata(self.tree_widget)
         )
+
+        self.open_files = QPushButton("Open Selected")
+        self.advanced_options = QPushButton("Advanced...")
+        self.open_files.setMaximumWidth(self.width() // 3)
+        self.open_files.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.advanced_options.setMaximumWidth(self.width() // 3)
+        self.advanced_options.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.h_spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        open_context_h_layout = QHBoxLayout()
+        open_context_h_layout.addItem(self.h_spacer)
+        open_context_h_layout.addWidget(self.open_files)
+        open_context_h_layout.addWidget(self.advanced_options)
 
         # Nuke script output setup.
         self.output_label = QLabel("Folder to Copy to: ")
@@ -207,7 +243,7 @@ class FindNestedAssets(QWidget):
         file_output_h_layout.addWidget(self.output_filepath)
         file_output_h_layout.addWidget(self.open_explorer_output)
 
-        self.open_explorer = QPushButton("Copy to Output Directory")
+        self.open_explorer = QPushButton("Copy Dependencies to Output Directory")
         # self.open_explorer.clicked.connect(lambda: self.open_explorer_dialog())
 
         main_layout.addLayout(file_input_h_layout)
@@ -216,13 +252,14 @@ class FindNestedAssets(QWidget):
         main_layout.addWidget(self.tree_label)
         main_layout.addWidget(self.tree_widget)
         main_layout.addWidget(self.metadata_button)
+        main_layout.addLayout(open_context_h_layout)
         main_layout.addItem(horizontal_spacer)
         main_layout.addLayout(file_output_h_layout)
         main_layout.addWidget(self.open_explorer)
 
         self.setLayout(main_layout)
 
-    def execute_nuke_search(self, input_path):
+    def execute_nuke_search(self, input_path: str) -> None:
         input_path = input_path.strip()
         if Path(input_path).is_file():
             file_names = process_files(Path(input_path))
@@ -246,43 +283,33 @@ class FindNestedAssets(QWidget):
         if path:
             line_edit.setText(path)
 
-    def extract_metadata(self, tree_widget):
+    def extract_metadata(self, tree_widget: QTreeWidget) -> None:
         for i in range(tree_widget.topLevelItemCount()):
             top_item = tree_widget.topLevelItem(i)
             with OpenEXR.File(top_item.text(0)) as infile:
                 header = infile.header()
-                metadata_child = QTreeWidgetItem()
-                metadata_child.setText(0, str(header))
-                top_item.addChild(metadata_child)
+                path_keys = {
+                    key: value
+                    for key, value in header.items()
+                    if "File" in key or "file" in key or "Path" in key or "path" in key
+                }
+                for key, value in path_keys.items():
+                    metadata_child = QTreeWidgetItem()
+                    metadata_child.setText(0, str(f"{key}: {value}"))
+                    top_item.addChild(metadata_child)
+                    metadata_child.setCheckState(0, Qt.Unchecked)
+                    print(metadata_child.checkState(0) == Qt.Checked)
+
+    def launch_selected(self):
+        # Should take the children of the tree as input. Search the dict for `Path` or `path`.
+        print(0)
 
 
 class MainWindow(QMainWindow):
     def __init__(self, widget):
         super().__init__()
         self.setWindowTitle("Nuke Asset Inspector")
-
         self.setCentralWidget(widget)
-
-
-def find_nested_assets_CLI():
-    """
-    Runs the Nuke Dependency Check in CLI format.
-
-    Using this function requires the script to be run in a Terminal, taking the positional Read argument and the optional -l and -m arguments. `-l` returns the absolute path, `-m` returns any .exr metadata found in scripts.
-    """
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("Read")
-    parser.add_argument("-l", "--long", action="store_true")
-    parser.add_argument("-m", "--metadata", action="store_true")
-    args = parser.parse_args()
-
-    # Get the Nuke script path input.
-    nuke_file = Path(args.Read)
-
-    # Get the list of full file path dependencies from the Nuke script.
-    file_names = process_files(nuke_file)
-    print(f"Total dependencies: " + str(len(file_names)))
 
 
 if __name__ == "__main__":
@@ -297,3 +324,6 @@ if __name__ == "__main__":
     window.show()
 
     sys.exit(app.exec())
+
+    # TODO: Search metadata for key `jf_hipFile`. Add button to launch associated hip file path.
+    # associated rez command: jfenv houdini -c "houdini -n <PATHTOHIP.hip>" --patch houdini-19.5.605 -v
