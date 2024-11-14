@@ -1,6 +1,8 @@
 import sys
 import os
 import argparse
+import subprocess
+from importlib.metadata import metadata
 from pathlib import Path
 import OpenEXR
 from PySide6.QtWidgets import (
@@ -218,6 +220,7 @@ class FindNestedAssets(QWidget):
         )
 
         self.open_files = QPushButton("Open Selected")
+        self.open_files.clicked.connect(lambda: self.launch_selected(self.tree_widget))
         self.advanced_options = QPushButton("Advanced...")
         self.open_files.setMaximumWidth(self.width() // 3)
         self.open_files.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -295,14 +298,26 @@ class FindNestedAssets(QWidget):
                 }
                 for key, value in path_keys.items():
                     metadata_child = QTreeWidgetItem()
+                    metadata_child.setData(0, Qt.UserRole, {key: value})
                     metadata_child.setText(0, str(f"{key}: {value}"))
                     top_item.addChild(metadata_child)
                     metadata_child.setCheckState(0, Qt.Unchecked)
-                    print(metadata_child.checkState(0) == Qt.Checked)
 
-    def launch_selected(self):
-        # Should take the children of the tree as input. Search the dict for `Path` or `path`.
-        print(0)
+            # Set parent to expanded.
+            top_item.setExpanded(True)
+
+    def launch_selected(self, tree_widget: QTreeWidget) -> None:
+        # Should take tree widget as ,input loop through all children to get Qt.Checked == True
+        for i in range(tree_widget.topLevelItemCount()):
+            current_parent = tree_widget.topLevelItem(i)
+            for j in range(current_parent.childCount()):
+                current_child = current_parent.child(j)
+                if result := current_child.checkState(0) == Qt.Checked:
+                    print(f"{current_child.text(0)} is set to {result}")
+                    child_data = current_child.data(0, Qt.UserRole)
+                    file_path = next(iter(child_data.values()))
+                    subprocess.Popen(['cmd', '/c', file_path])
+
 
 
 class MainWindow(QMainWindow):
