@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QSpacerItem,
     QSizePolicy,
-    QTreeWidgetItem,
+    QTreeWidgetItem, QDialog, QDialogButtonBox,
 )
 from PySide6.QtCore import Qt
 
@@ -188,6 +188,10 @@ class FindNestedAssets(QWidget):
 
         main_layout = QVBoxLayout()
 
+        # Dynamically set launch command.
+        self.launch_path = ""
+        self.launch_cmd = "cmd /c echo Opening"
+
         # Nuke script input setup.
         self.input_label = QLabel("Nuke Script Input: ")
         self.input_filepath = QLineEdit()
@@ -222,6 +226,7 @@ class FindNestedAssets(QWidget):
         self.open_files = QPushButton("Open Selected")
         self.open_files.clicked.connect(lambda: self.launch_selected(self.tree_widget))
         self.advanced_options = QPushButton("Advanced...")
+        self.advanced_options.clicked.connect(lambda: self.advanced_dialog())
         self.open_files.setMaximumWidth(self.width() // 3)
         self.open_files.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.advanced_options.setMaximumWidth(self.width() // 3)
@@ -315,9 +320,45 @@ class FindNestedAssets(QWidget):
                 if result := current_child.checkState(0) == Qt.Checked:
                     print(f"{current_child.text(0)} is set to {result}")
                     child_data = current_child.data(0, Qt.UserRole)
-                    file_path = next(iter(child_data.values()))
-                    subprocess.Popen(['cmd', '/c', file_path])
+                    self.launch_path = next(iter(child_data.values()))
+                    # subprocess.Popen(["cmd", "/c", f"echo Opening {file_path}"])
+                    subprocess.Popen(f"{self.launch_cmd} {self.launch_path}") # Placeholder.
 
+    def advanced_dialog(self) -> None:
+        dlg = AdvancedDialog(self)
+        dlg.setMinimumWidth(500)
+        dlg.exec()
+
+class AdvancedDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Advanced Options")
+        dialog_buttons = QDialogButtonBox.Apply | QDialogButtonBox.Discard
+
+        self.cmd_label_open = QLabel("Launch Command: `")
+        self.command_edit = QLineEdit()
+        self.command_edit.setText(f"{parent.launch_cmd} <filepath>")
+        self.command_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.filepath_edit = QLineEdit()
+        self.filepath_edit.setText(f"{parent.launch_path}" if parent.launch_path else "<FILEPATH>")
+        self.filepath_edit.setFixedSize(85, 20)
+        self.filepath_edit.setReadOnly(True)
+        self.cmd_label_close = QLabel("`")
+
+        self.h_layout = QHBoxLayout()
+        self.h_layout.addWidget(self.cmd_label_open)
+        self.h_layout.addWidget(self.command_edit)
+        self.h_layout.addWidget(self.filepath_edit)
+        self.h_layout.addWidget(self.cmd_label_close)
+
+        self.buttonBox = QDialogButtonBox(dialog_buttons)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.h_layout)
+        self.main_layout.addWidget(self.buttonBox)
+        self.setLayout(self.main_layout)
 
 
 class MainWindow(QMainWindow):
@@ -340,5 +381,6 @@ if __name__ == "__main__":
 
     sys.exit(app.exec())
 
-    # TODO: Search metadata for key `jf_hipFile`. Add button to launch associated hip file path.
+    # TODO: Launch associated hip file paths.
     # associated rez command: jfenv houdini -c "houdini -n <PATHTOHIP.hip>" --patch houdini-19.5.605 -v
+    # TODO: Launch frame sequence.
