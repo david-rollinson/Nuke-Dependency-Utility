@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTreeWidgetItem, QDialog, QDialogButtonBox,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 
 def gather_deps_from_nk_file(nuke_script: str) -> list[str]:
@@ -188,7 +188,7 @@ class FindNestedAssets(QWidget):
 
         main_layout = QVBoxLayout()
 
-        # Dynamically set launch command.
+        # Dynamically set launch command for found .hip files in metadata.
         self.launch_path = ""
         self.launch_cmd = "cmd /c echo Opening"
 
@@ -239,19 +239,19 @@ class FindNestedAssets(QWidget):
         open_context_h_layout.addWidget(self.advanced_options)
 
         # Nuke script output setup.
-        self.output_label = QLabel("Folder to Copy to: ")
-        self.output_filepath = QLineEdit()
-        self.output_filepath.setPlaceholderText("")
-        self.open_explorer_output = QPushButton("...")
-        self.open_explorer_output.clicked.connect(
-            lambda: self.open_explorer_dialog(False, self.output_filepath)
-        )
-        file_output_h_layout = QHBoxLayout()
-        file_output_h_layout.addWidget(self.output_label)
-        file_output_h_layout.addWidget(self.output_filepath)
-        file_output_h_layout.addWidget(self.open_explorer_output)
+        # self.output_label = QLabel("Folder to Copy to: ")
+        # self.output_filepath = QLineEdit()
+        # self.output_filepath.setPlaceholderText("")
+        # self.open_explorer_output = QPushButton("...")
+        # self.open_explorer_output.clicked.connect(
+        #     lambda: self.open_explorer_dialog(False, self.output_filepath)
+        # )
+        # file_output_h_layout = QHBoxLayout()
+        # file_output_h_layout.addWidget(self.output_label)
+        # file_output_h_layout.addWidget(self.output_filepath)
+        # file_output_h_layout.addWidget(self.open_explorer_output)
 
-        self.open_explorer = QPushButton("Copy Dependencies to Output Directory")
+        # self.open_explorer = QPushButton("Copy Dependencies to Output Directory")
         # self.open_explorer.clicked.connect(lambda: self.open_explorer_dialog())
 
         main_layout.addLayout(file_input_h_layout)
@@ -261,9 +261,9 @@ class FindNestedAssets(QWidget):
         main_layout.addWidget(self.tree_widget)
         main_layout.addWidget(self.metadata_button)
         main_layout.addLayout(open_context_h_layout)
-        main_layout.addItem(horizontal_spacer)
-        main_layout.addLayout(file_output_h_layout)
-        main_layout.addWidget(self.open_explorer)
+        # main_layout.addItem(horizontal_spacer)
+        # main_layout.addLayout(file_output_h_layout)
+        # main_layout.addWidget(self.open_explorer)
 
         self.setLayout(main_layout)
 
@@ -312,7 +312,6 @@ class FindNestedAssets(QWidget):
             top_item.setExpanded(True)
 
     def launch_selected(self, tree_widget: QTreeWidget) -> None:
-        # Should take tree widget as ,input loop through all children to get Qt.Checked == True
         for i in range(tree_widget.topLevelItemCount()):
             current_parent = tree_widget.topLevelItem(i)
             for j in range(current_parent.childCount()):
@@ -321,23 +320,49 @@ class FindNestedAssets(QWidget):
                     print(f"{current_child.text(0)} is set to {result}")
                     child_data = current_child.data(0, Qt.UserRole)
                     self.launch_path = next(iter(child_data.values()))
-                    # subprocess.Popen(["cmd", "/c", f"echo Opening {file_path}"])
-                    subprocess.Popen(f"{self.launch_cmd} {self.launch_path}") # Placeholder.
+                    print(f"Launch command: {self.launch_cmd} {self.launch_path}")
+                    # subprocess.Popen(f"{self.launch_cmd} {self.launch_path}") # Placeholder.
 
     def advanced_dialog(self) -> None:
+        """
+        Launches an 'Advanced' dialog for user changes to the .hip file launch command.
+        """
         dlg = AdvancedDialog(self)
         dlg.setMinimumWidth(500)
+
+        # Connect the parent slot to child signal, to update the .hip file launch command.
+        dlg.launch_cmd_changed.connect(self.update_widget)
         dlg.exec()
 
+    def update_widget(self, advanced_cmd) -> None:
+        """
+        Assigns the hip file launch command signal from the child 'Advanced' dialog to the parent's launch command. Prints changes to the console.
+        """
+        print(f"Advanced dialog has updated the launch command from: `{self.launch_cmd}` to: `{advanced_cmd}`.")
+        self.launch_cmd = advanced_cmd
+
+
 class AdvancedDialog(QDialog):
+    """
+    A dialog for configuring advanced launch settings.
+
+    This dialog allows the user to input/edit a custom launch command via a QLineEdit. On accept, the custom command is sent back to the parent QWidget to override its default launch command.
+
+    Methods:
+        apply_launch_cmd_edit():
+            Emits str 'launch command' inside the QLineEdit as a signal to the parent's slot.
+    """
+
+    launch_cmd_changed = Signal(str)
+
     def __init__(self, parent):
         super().__init__(parent)
         self.setWindowTitle("Advanced Options")
-        dialog_buttons = QDialogButtonBox.Apply | QDialogButtonBox.Discard
 
+        # Inline dialog label and user input.
         self.cmd_label_open = QLabel("Launch Command: `")
         self.command_edit = QLineEdit()
-        self.command_edit.setText(f"{parent.launch_cmd} <filepath>")
+        self.command_edit.setText(f"{parent.launch_cmd}")
         self.command_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.filepath_edit = QLineEdit()
         self.filepath_edit.setText(f"{parent.launch_path}" if parent.launch_path else "<FILEPATH>")
@@ -345,21 +370,32 @@ class AdvancedDialog(QDialog):
         self.filepath_edit.setReadOnly(True)
         self.cmd_label_close = QLabel("`")
 
+        # Layout for above label and inputs.
         self.h_layout = QHBoxLayout()
         self.h_layout.addWidget(self.cmd_label_open)
         self.h_layout.addWidget(self.command_edit)
         self.h_layout.addWidget(self.filepath_edit)
         self.h_layout.addWidget(self.cmd_label_close)
 
+        # Button layout.
+        dialog_buttons = QDialogButtonBox.Apply | QDialogButtonBox.Discard
         self.buttonBox = QDialogButtonBox(dialog_buttons)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
+        # Connect actions to dialog buttons.
+        self.buttonBox.button(dialog_buttons.Apply).clicked.connect(lambda: self.apply_launch_cmd_edit())
+        self.buttonBox.button(dialog_buttons.Discard).clicked.connect(self.reject)
 
         self.main_layout = QVBoxLayout()
         self.main_layout.addLayout(self.h_layout)
         self.main_layout.addWidget(self.buttonBox)
         self.setLayout(self.main_layout)
 
+        # if ok, set parent cmd to dialog input. if discard, close dialog.
+    def apply_launch_cmd_edit(self) -> None:
+        """
+        Emits str 'launch command' from dialog QLineEdit as a signal to the parent widget's slot.
+        """
+        self.launch_cmd_changed.emit(self.command_edit.text())
+        self.accept()
 
 class MainWindow(QMainWindow):
     def __init__(self, widget):
