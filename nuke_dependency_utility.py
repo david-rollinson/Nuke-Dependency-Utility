@@ -434,7 +434,7 @@ class AdvancedDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self, widget):
         super().__init__()
-        self.setWindowTitle("Nuke Asset Inspector")
+        self.setWindowTitle("Nuke Dependency Utility | QC")
         self.setCentralWidget(widget)
 
 
