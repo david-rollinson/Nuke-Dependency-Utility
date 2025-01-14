@@ -1,7 +1,9 @@
-## Nuke Asset Inspector. 
+# Nuke Dependency Utility
 
-A utility that returns Nuke script dependencies and their associated work files.  
+*This utility locates nested frame dependencies inside a given Nuke file and searches the frame metadata for the project file path that produced it (in this usecase, a Houdini .hip file). This utility was created to improve QC re-rendering workflow, solving the problem of large volumes of shot kickbacks due to poorly optimised render settings, or otherwise improper frame quality. This utility enables the efficient location and launch of project files from QC frames, such that they may be quickly fixed, updated or improved and submitted for re-render.*
 
-### To Do:
-- Implement launcher to launch working files inside show Rez context. 
-- Copy Utility to move dependencies into delivery folders.  
+### Background
+The impetus for this tool was large volumes of kickbacks during IMF stage production due to disparity in quality of early-production approved lighting renders versus late-production approved lighting renders. Imagine - an animated feature film has been in production for a number of years and in that time has seen numerous major updates by Pipeline and show template performance improvements by Lighting/Comp TDs. The show is now at stage where it's performance bottlenecks are well-known, and their workarounds solved. In theory it's possible to bring older, lower-quality Lighting and Comp approvals up to the current quality benchmark. But the project files for these old frames are using old tooling that may no longer be supported by current pipeline infrastructure - we are faced with perhaps hundreds of individual Comp layers that each require bespoke optimisation solutions and tooling upgrades to reach the enhanced render quality, all without making any changes to the overall 'look' of the frames. The shots are 'approved', so we want re-renders to be identical with *only* a quality improvement. 
+
+### With this tool...
+At QC stage, Supes can review older approved Comp frames and pass lists of those requiring re-render to an appropriate team. The utility allows QC personnel to quickly isolate the exact .exr layer versions used in the Comp script (Comp artists often leave many different stale versions in the script, unplugged) that have been flagged for a quality bump and launch their associated project file versions, ready to re-render an identical frame with improvements only to quality and render optimisation.  
