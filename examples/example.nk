@@ -134,7 +134,7 @@ BackdropNode {
 }
 Read {
  inputs 0
- file "/Users/davidrollinson/Documents/Development/Python/pySide_file_copy/sample-exr-files-sample_1920x1280.exr"
+ file "./field.exr"
  format "960 540 0 0 960 540 1 "
  last 24
  origlast 24
@@ -387,7 +387,7 @@ Blur {
 }
 Read {
  inputs 0
- file "/Users/davidrollinson/Documents/Development/Python/pySide_file_copy/Desk.exr"
+ file "./desk.exr"
  format "960 540 0 0 960 540 1 "
  origset true
  name Read18

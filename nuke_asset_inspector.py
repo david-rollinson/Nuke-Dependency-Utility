@@ -192,18 +192,28 @@ class FindNestedAssets(QWidget):
         self.launch_path = ""
         self.launch_cmd = "cmd /c echo Opening"
 
+        # Set global cut in for frames.
+        self.cut_in = "1001"
+
         # Nuke script input setup.
         self.input_label = QLabel("Nuke Script Input: ")
         self.input_filepath = QLineEdit()
         self.input_filepath.setPlaceholderText("")
+
         self.open_explorer_input = QPushButton("...")
         self.open_explorer_input.clicked.connect(
             lambda: self.open_explorer_dialog(True, self.input_filepath)
         )
+        self.launch_nk_button = QPushButton("Launch")
+        self.launch_nk_button.clicked.connect(
+            lambda: self.launch_nk(self.input_filepath.text())
+        )
+
         file_input_h_layout = QHBoxLayout()
         file_input_h_layout.addWidget(self.input_label)
         file_input_h_layout.addWidget(self.input_filepath)
         file_input_h_layout.addWidget(self.open_explorer_input)
+        file_input_h_layout.addWidget(self.launch_nk_button)
 
         self.set_input = QPushButton("Search for Dependencies")
         self.set_input.clicked.connect(
@@ -215,13 +225,26 @@ class FindNestedAssets(QWidget):
         )
 
         # Tree Widget.
-        self.tree_label = QLabel("Located Dependencies:")
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Filepath"])
         self.metadata_button = QPushButton("Gather EXR Metadata")
         self.metadata_button.clicked.connect(
             lambda: self.extract_metadata(self.tree_widget)
         )
+
+        # Launch the file on double clicked.
+        self.tree_widget.itemDoubleClicked.connect(self.on_double_click)
+
+        # Tree Widget titlebar.
+        tree_title = QHBoxLayout()
+        self.tree_label = QLabel("Located Dependencies:")
+        self.clear_items = QPushButton("Clear")
+        self.clear_items.clicked.connect(lambda: self.tree_widget.clear())
+        self.tree_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.clear_items.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        tree_title.addWidget(self.tree_label)
+        tree_title.addWidget(self.clear_items)
 
         self.open_files = QPushButton("Open Selected")
         self.open_files.clicked.connect(lambda: self.launch_selected(self.tree_widget))
@@ -257,7 +280,7 @@ class FindNestedAssets(QWidget):
         main_layout.addLayout(file_input_h_layout)
         main_layout.addWidget(self.set_input)
         main_layout.addItem(horizontal_spacer)
-        main_layout.addWidget(self.tree_label)
+        main_layout.addLayout(tree_title)
         main_layout.addWidget(self.tree_widget)
         main_layout.addWidget(self.metadata_button)
         main_layout.addLayout(open_context_h_layout)
@@ -322,6 +345,17 @@ class FindNestedAssets(QWidget):
                     self.launch_path = next(iter(child_data.values()))
                     print(f"Launch command: {self.launch_cmd} {self.launch_path}")
                     # subprocess.Popen(f"{self.launch_cmd} {self.launch_path}") # Placeholder.
+
+    def launch_nk(self, nuke_file: str) -> None:
+        subprocess.Popen(f"cmd /c {nuke_file}")
+
+    def on_double_click(self, item, column):
+        if item.parent() is None:
+            file_path = item.text(column)
+            print(f"{file_path} was double clicked.")
+
+            file_path = file_path.replace("####", self.cut_in).replace("%04d", self.cut_in)
+            subprocess.Popen(f"cmd /c {file_path}")
 
     def advanced_dialog(self) -> None:
         """
